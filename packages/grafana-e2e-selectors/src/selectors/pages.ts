@@ -19,6 +19,14 @@ export const versionedPages = {
       },
     },
   },
+  Bookmarks: {
+    url: {
+      '13.2.0': '/bookmarks',
+    },
+    searchInput: {
+      '13.2.0': 'data-testid Bookmarks search input',
+    },
+  },
   Login: {
     url: {
       [MIN_GRAFANA_VERSION]: '/login',

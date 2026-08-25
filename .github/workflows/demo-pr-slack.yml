@@ -1,0 +1,36 @@
+name: Demo PR Slack notifications
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed, converted_to_draft]
+
+permissions: {}
+
+jobs:
+  notify-slack:
+    if: github.repository == 'davidfromcursor/grafana'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Post PR status to Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.DEMO_SLACK_WEBHOOK_URL }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_ACTION: ${{ github.event.action }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "DEMO_SLACK_WEBHOOK_URL is not set; skipping Slack notification"
+            exit 0
+          fi
+
+          if [ "$PR_ACTION" = "closed" ] && [ "$PR_MERGED" = "true" ]; then
+            TEXT="merged: ${PR_TITLE} ${PR_URL}"
+          else
+            TEXT="PR ${PR_ACTION}: ${PR_TITLE} ${PR_URL}"
+          fi
+
+          export TEXT
+          PAYLOAD=$(python3 -c 'import json, os; print(json.dumps({"text": os.environ["TEXT"]}))')
+          curl -fsS -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL"
