@@ -26,11 +26,16 @@ export function BookmarksPage() {
   }, []);
 
   const filteredItems = useMemo(() => {
-    if (!query) {
+    const needle = query.trim().toLowerCase();
+    if (!needle) {
       return validItems;
     }
 
-    return validItems.filter((item) => item.text.includes(query));
+    return validItems.filter((item) => {
+      const title = item.text.toLowerCase();
+      const subtitle = (item.subTitle ?? '').toLowerCase();
+      return title.includes(needle) || subtitle.includes(needle);
+    });
   }, [query, validItems]);
 
   return (

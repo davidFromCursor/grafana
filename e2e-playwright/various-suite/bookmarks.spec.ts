@@ -128,5 +128,27 @@ test.describe(
       await expect(page.getByRole('link', { name: /Explore/ })).toBeVisible();
       await expect(page.getByRole('link', { name: /Dashboards/ })).toBeHidden();
     });
+
+    test('filters bookmarks case-insensitively by title', async ({ page, selectors }) => {
+      await page.evaluate(() => {
+        localStorage.setItem('grafana.navigation.docked', 'true');
+        localStorage.setItem(
+          'grafana.user.preferences',
+          JSON.stringify({
+            navbar: { bookmarkUrls: ['/dashboards', '/explore'] },
+          })
+        );
+      });
+      await page.goto(selectors.pages.Bookmarks.url);
+      await page.reload();
+
+      await expect(page.getByRole('link', { name: /Dashboards/ })).toBeVisible();
+      await expect(page.getByRole('link', { name: /Explore/ })).toBeVisible();
+
+      await page.getByTestId(selectors.pages.Bookmarks.searchInput).fill('EXPLORE');
+
+      await expect(page.getByRole('link', { name: /Explore/ })).toBeVisible();
+      await expect(page.getByRole('link', { name: /Dashboards/ })).toBeHidden();
+    });
   }
 );

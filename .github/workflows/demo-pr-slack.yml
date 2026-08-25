@@ -25,12 +25,5 @@ jobs:
             exit 0
           fi
 
-          if [ "$PR_ACTION" = "closed" ] && [ "$PR_MERGED" = "true" ]; then
-            TEXT="merged: ${PR_TITLE} ${PR_URL}"
-          else
-            TEXT="PR ${PR_ACTION}: ${PR_TITLE} ${PR_URL}"
-          fi
-
-          export TEXT
-          PAYLOAD=$(python3 -c 'import json, os; print(json.dumps({"text": os.environ["TEXT"]}))')
+          PAYLOAD=$(python3 -c 'import json, os; action = os.environ["PR_ACTION"]; merged = os.environ["PR_MERGED"] == "true"; title = os.environ["PR_TITLE"]; url = os.environ["PR_URL"]; text = f"merged: {title} {url}" if action == "closed" and merged else f"PR {action}: {title} {url}"; print(json.dumps({"text": text}))')
           curl -fsS -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL"

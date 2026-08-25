@@ -82,6 +82,32 @@ describe('BookmarksPage', () => {
     expect(screen.getByRole('link', { name: /Explore/ })).toBeInTheDocument();
   });
 
+  it('matches bookmark titles case-insensitively', async () => {
+    const user = userEvent.setup();
+    setMockUserPreferences({ navbar: { bookmarkUrls: ['/dashboards', '/explore'] } });
+    setup();
+
+    expect(await screen.findByRole('link', { name: /Explore/ })).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText('Search bookmarks'), 'EXPLORE');
+
+    expect(screen.queryByRole('link', { name: /Dashboards/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Explore/ })).toBeInTheDocument();
+  });
+
+  it('matches bookmark subtitles', async () => {
+    const user = userEvent.setup();
+    setMockUserPreferences({ navbar: { bookmarkUrls: ['/dashboards', '/explore'] } });
+    setup();
+
+    expect(await screen.findByRole('link', { name: /Dashboards/ })).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText('Search bookmarks'), 'browse');
+
+    expect(screen.getByRole('link', { name: /Dashboards/ })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Explore/ })).not.toBeInTheDocument();
+  });
+
   it('shows a no-results state when the search matches nothing', async () => {
     const user = userEvent.setup();
     setMockUserPreferences({ navbar: { bookmarkUrls: ['/dashboards', '/explore'] } });
