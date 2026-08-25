@@ -1,8 +1,10 @@
 import { css } from '@emotion/css';
+import { useMemo, useState } from 'react';
 
 import { type GrafanaTheme2, type NavModelItem } from '@grafana/data';
+import { selectors } from '@grafana/e2e-selectors';
 import { Trans, t } from '@grafana/i18n';
-import { EmptyState, useStyles2 } from '@grafana/ui';
+import { EmptyState, FilterInput, Stack, useStyles2 } from '@grafana/ui';
 import { usePinnedItems } from 'app/core/components/AppChrome/MegaMenu/hooks';
 import { findByUrl } from 'app/core/components/AppChrome/MegaMenu/utils';
 import { NavLandingPageCard } from 'app/core/components/NavLandingPage/NavLandingPageCard';
@@ -13,6 +15,7 @@ export function BookmarksPage() {
   const styles = useStyles2(getStyles);
   const { pinnedItems } = usePinnedItems();
   const navTree = useSelector((state) => state.navBarTree);
+  const [query, setQuery] = useState('');
 
   const validItems = pinnedItems.reduce((acc: NavModelItem[], url) => {
     const item = findByUrl(navTree, url);
@@ -21,6 +24,19 @@ export function BookmarksPage() {
     }
     return acc;
   }, []);
+
+  const filteredItems = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) {
+      return validItems;
+    }
+
+    return validItems.filter((item) => {
+      const title = item.text.toLowerCase();
+      const subtitle = (item.subTitle ?? '').toLowerCase();
+      return title.includes(needle) || subtitle.includes(needle);
+    });
+  }, [query, validItems]);
 
   return (
     <Page navId="bookmarks">
@@ -35,18 +51,34 @@ export function BookmarksPage() {
             </Trans>
           </EmptyState>
         ) : (
-          <section className={styles.grid}>
-            {validItems.map((item) => {
-              return (
-                <NavLandingPageCard
-                  key={item.id || item.url}
-                  description={item.subTitle}
-                  text={item.text}
-                  url={item.url ?? ''}
-                />
-              );
-            })}
-          </section>
+          <Stack direction="column" gap={2}>
+            <FilterInput
+              escapeRegex={false}
+              placeholder={t('bookmarks-page.search.placeholder', 'Search bookmarks')}
+              value={query}
+              onChange={setQuery}
+              data-testid={selectors.pages.Bookmarks.searchInput}
+            />
+            {filteredItems.length === 0 ? (
+              <EmptyState
+                variant="not-found"
+                message={t('bookmarks-page.search.no-results', 'No bookmarks matching your search')}
+              />
+            ) : (
+              <section className={styles.grid}>
+                {filteredItems.map((item) => {
+                  return (
+                    <NavLandingPageCard
+                      key={item.id || item.url}
+                      description={item.subTitle}
+                      text={item.text}
+                      url={item.url ?? ''}
+                    />
+                  );
+                })}
+              </section>
+            )}
+          </Stack>
         )}
       </Page.Contents>
     </Page>

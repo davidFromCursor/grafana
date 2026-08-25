@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { render, screen } from 'test/test-utils';
 
 import { setBackendSrv } from '@grafana/runtime';
@@ -65,5 +66,59 @@ describe('BookmarksPage', () => {
     setup();
 
     expect(await screen.findByText('It looks like you haven’t created any bookmarks yet')).toBeInTheDocument();
+  });
+
+  it('filters bookmarks by title from the search field', async () => {
+    const user = userEvent.setup();
+    setMockUserPreferences({ navbar: { bookmarkUrls: ['/dashboards', '/explore'] } });
+    setup();
+
+    expect(await screen.findByRole('link', { name: /Dashboards/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Explore/ })).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText('Search bookmarks'), 'xpl');
+
+    expect(screen.queryByRole('link', { name: /Dashboards/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Explore/ })).toBeInTheDocument();
+  });
+
+  it('matches bookmark titles case-insensitively', async () => {
+    const user = userEvent.setup();
+    setMockUserPreferences({ navbar: { bookmarkUrls: ['/dashboards', '/explore'] } });
+    setup();
+
+    expect(await screen.findByRole('link', { name: /Explore/ })).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText('Search bookmarks'), 'EXPLORE');
+
+    expect(screen.queryByRole('link', { name: /Dashboards/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Explore/ })).toBeInTheDocument();
+  });
+
+  it('matches bookmark subtitles', async () => {
+    const user = userEvent.setup();
+    setMockUserPreferences({ navbar: { bookmarkUrls: ['/dashboards', '/explore'] } });
+    setup();
+
+    expect(await screen.findByRole('link', { name: /Dashboards/ })).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText('Search bookmarks'), 'browse');
+
+    expect(screen.getByRole('link', { name: /Dashboards/ })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Explore/ })).not.toBeInTheDocument();
+  });
+
+  it('shows a no-results state when the search matches nothing', async () => {
+    const user = userEvent.setup();
+    setMockUserPreferences({ navbar: { bookmarkUrls: ['/dashboards', '/explore'] } });
+    setup();
+
+    expect(await screen.findByRole('link', { name: /Explore/ })).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText('Search bookmarks'), 'zzz');
+
+    expect(screen.queryByRole('link', { name: /Dashboards/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Explore/ })).not.toBeInTheDocument();
+    expect(screen.getByText('No bookmarks matching your search')).toBeInTheDocument();
   });
 });

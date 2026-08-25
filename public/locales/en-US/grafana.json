@@ -4296,6 +4296,10 @@
     "empty": {
       "message": "It looks like you haven’t created any bookmarks yet",
       "tip": "Hover over any item in the nav menu and click on the bookmark icon to add it here."
+    },
+    "search": {
+      "no-results": "No bookmarks matching your search",
+      "placeholder": "Search bookmarks"
     }
   },
   "browse-dashboards": {
