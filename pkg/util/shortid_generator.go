@@ -1,12 +1,12 @@
 package util
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"regexp"
 	"sync"
-	"time"
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/google/uuid"
@@ -14,7 +14,6 @@ import (
 
 const MaxUIDLength = 40
 
-var uidrand = rand.New(rand.NewSource(time.Now().UnixNano()))
 var alphaRunes = []rune("abcdefghijklmnopqrstuvwxyz")
 var hexLetters = []rune("abcdef")
 
@@ -24,9 +23,8 @@ var (
 	ErrUIDEmpty         = fmt.Errorf("UID is empty")
 )
 
-// We want to protect our number generator as they are not thread safe. Not using
-// the mutex could result in panics in certain cases where UIDs would be generated
-// at the same time.
+// Guards the lazy initialization of the snowflake node, which could otherwise
+// be created more than once when UIDs are generated concurrently.
 var mtx sync.Mutex
 
 // Legacy UID pattern
@@ -46,6 +44,17 @@ func IsShortUIDTooLong(uid string) bool {
 
 var node *snowflake.Node
 
+// cryptoRandIntn returns a uniformly distributed value in [0, n) from crypto/rand.
+// crypto/rand.Reader never returns an error, so it is safe to ignore here.
+func cryptoRandIntn(n int64) int64 {
+	v, _ := rand.Int(rand.Reader, big.NewInt(n))
+	return v.Int64()
+}
+
+func randomHexLetter() string {
+	return string(hexLetters[cryptoRandIntn(int64(len(hexLetters)))])
+}
+
 // GenerateShortUID will generate a UUID that can also be a k8s name
 // it is guaranteed to have a character as the first letter
 // This UID will be a valid k8s name
@@ -55,28 +64,21 @@ func GenerateShortUID() string {
 
 	if node == nil {
 		// ignoring the error happens when input outside 0-1023
-		node, _ = snowflake.NewNode(rand.Int63n(1024))
+		node, _ = snowflake.NewNode(cryptoRandIntn(1024))
 	}
 
 	// Use UUIDs if snowflake failed (should be never)
 	if node == nil {
-		uid, err := uuid.NewRandom()
-		if err != nil {
-			// This should never happen... but this seems better than a panic
-			for i := range uid {
-				uid[i] = byte(uidrand.Intn(255))
-			}
-		}
-		uuid := uid.String()
+		uuid := uuid.NewString()
 		if rune(uuid[0]) < rune('a') {
-			uuid = string(hexLetters[uidrand.Intn(len(hexLetters))]) + uuid[1:]
+			uuid = randomHexLetter() + uuid[1:]
 		}
 		return uuid
 	}
 
-	return string(hexLetters[uidrand.Intn(len(hexLetters))]) + // start with a letter
+	return randomHexLetter() + // start with a letter
 		node.Generate().Base36() +
-		string(hexLetters[uidrand.Intn(len(hexLetters))]) // a bit more entropy
+		randomHexLetter() // a bit more entropy
 }
 
 // ValidateUID checks the format and length of the string and returns error if it does not pass the condition
